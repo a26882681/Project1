@@ -174,7 +174,13 @@ namespace 多功能嬰兒助理
 
         private async void Page_Loaded(object sender, RoutedEventArgs e)
         {
-            string qFilter = SerialDevice.GetDeviceSelector("COM3");
+            ConnectPort("COM7");
+
+
+        }
+        private async void ConnectPort(string com)
+        {
+            string qFilter = SerialDevice.GetDeviceSelector(com);
 
             DeviceInformationCollection devices = await DeviceInformation.FindAllAsync(qFilter);
             try
@@ -185,40 +191,15 @@ namespace 多功能嬰兒助理
                     await OpenPort(deviceId);
                 }
             }
-            catch (Exception ex) { }
-            qFilter = SerialDevice.GetDeviceSelector("COM6");
-            devices = await DeviceInformation.FindAllAsync(qFilter);
-            try
-            {
-                if (devices.Any())
-                {
-                    string deviceId = devices.First().Id;
-                    await OpenPort(deviceId);
-                }
-            }
-            catch (Exception ex) { }
+            catch (Exception ex) { };
+           
             ReadCancellationTokenSource = new CancellationTokenSource();
-            HR_RadialGauge.Value = 90;
-            HR_Text.Text = "90\nbpm";
-            T1=35.5;
-            T2 = 30.5;
-            T3 = 40.5;
-            if (T1 % 1 == 0) T1_Text.Text = T1 + ".0\n°C";
-            else T1_Text.Text = T1 + "\n °C";
-            T1_RadialGauge.Value = T1 * 10;
-            if (T2 % 1 == 0) T2_Text.Text = T2 + ".0\n°C";
-            else T2_Text.Text = T2 + "\n °C";
-            T2_RadialGauge.Value = T2 * 10;
-            if (T3 % 1 == 0) T3_Text.Text = T3 + ".0\n°C";
-            else T3_Text.Text = T3 + "\n °C";
-            T3_RadialGauge.Value = T3 * 10;
             while (Watch_serialDevice != null)
             {
                 await Listen();
             }
 
         }
-
         private async Task OpenPort(string deviceId)
         {
             if (deviceId.Contains("VID_1366"))
@@ -313,8 +294,18 @@ namespace 多功能嬰兒助理
                         if (strLineData.Contains("HR=") && strLineData.Contains(",") && (Regex.Replace(strLineData, @"[^\d]", String.Empty) != "0"))
                         {
                             HR_RadialGauge.Value = int.Parse(Regex.Replace(strLineData, @"[^\d]", String.Empty));
-                            HR_Text.Text = Regex.Replace(strLineData, @"[^\d]", String.Empty);
+                            HR_Text.Text = HR_RadialGauge.Value + "\nbpm";
                             Read_Watch.Text = lines[lines.Length - 1];
+                            if (HR_RadialGauge.Value < 120)
+                            {
+                                HR_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
+                                HR_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
+                            }
+                            else
+                            {
+                                HR_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.Red);
+                                HR_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
+                            }
                         }
                         else if (strLineData.Contains("G=") && strLineData.Contains(","))
                         {
@@ -520,47 +511,93 @@ namespace 多功能嬰兒助理
         private async void ConnectButton_Click1()
         {
             TimeSpan period = TimeSpan.FromSeconds(1);
-
+            ConnectButton.IsEnabled = false;
+            int i=0;
             PeriodicTimer = ThreadPoolTimer.CreatePeriodicTimer(async (source) =>
             {
                 await Dispatcher.RunAsync(CoreDispatcherPriority.High,
                 () =>
                 {
-                    if (!BLE_connect && Temperature1_State.Text.Contains("未連線"))
+                    if (!BLE_connect && Temperature1_State.Text.Contains("未連線") && i<1)
                     {
                         ConnectButton_Click(bluetoothLeDevice, SelectedBleDeviceId, 0);
+                        i = 1;
                     }
-                    else if (!BLE_connect && Temperature2_State.Text.Contains("未連線"))
+                    else if (!BLE_connect && Temperature2_State.Text.Contains("未連線") && i<2)
                     {
                         ConnectButton_Click(bluetoothLeDevice1, SelectedBleDeviceId1, 1);
+                        i = 2;
                     }
-                    else if (!BLE_connect && Temperature3_State.Text.Contains("未連線"))
+                    else if (!BLE_connect && Temperature3_State.Text.Contains("未連線") && i<3)
                     {
                         ConnectButton_Click(bluetoothLeDevice2, SelectedBleDeviceId2, 2);
+                        i = 3;
                     }
                     else if (!BLE_connect)
                     {
                         close_timer();
+                        i = 0;
+                        ConnectButton.IsEnabled = true;
                     }
-
+                    
                 });
 
             }, period);
             await SendToArduino("1");
-            HR_RadialGauge.Value = 90;
-            HR_Text.Text = "120\nbpm";
-            T1 = 25.5;
-            T2 = 20.5;
-            T3 = 23.5;
+            HR_RadialGauge.Value = 150;
+            HR_Text.Text = HR_RadialGauge.Value +"\nbpm";
+            T1 = 41.5;
+            T2 = 25.5;
+            T3 =38.5;
             if (T1 % 1 == 0) T1_Text.Text = T1 + ".0\n°C";
-            else T1_Text.Text = T1 + "\n °C";
+            else T1_Text.Text = T1 + "\n°C";
             T1_RadialGauge.Value = T1 * 10;
             if (T2 % 1 == 0) T2_Text.Text = T2 + ".0\n°C";
-            else T2_Text.Text = T2 + "\n °C";
+            else T2_Text.Text = T2 + "\n°C";
             T2_RadialGauge.Value = T2 * 10;
             if (T3 % 1 == 0) T3_Text.Text = T3 + ".0\n°C";
-            else T3_Text.Text = T3 + "\n °C";
+            else T3_Text.Text = T3 + "\n°C";
             T3_RadialGauge.Value = T3 * 10;
+            if (HR_RadialGauge.Value < 120)
+            {
+                HR_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
+                HR_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
+            }
+            else
+            {
+                HR_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.Red);
+                HR_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
+            }
+            if (T1 < 38)
+            {
+                T1_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
+                T1_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
+            }
+            else
+            {
+                T1_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.Red);
+                T1_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
+            }
+            if (T2 < 38)
+            {
+                T2_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
+                T2_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
+            }
+            else
+            {
+                T2_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.Red);
+                T2_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
+            }
+            if (T3 < 38)
+            {
+                T3_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
+                T3_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
+            }
+            else
+            {
+                T3_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.Red);
+                T3_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
+            }
         }
         private void close_timer()
         {
@@ -623,6 +660,7 @@ namespace 多功能嬰兒助理
                         Temperature3_State.Text = "體溫計(室溫)：未連線";
                         Temperature3_State_LED.Fill = new SolidColorBrush(Colors.DarkRed);
                     }
+                    BLE_connect = false;
                 }
             }
         }
@@ -657,13 +695,14 @@ namespace 多功能嬰兒助理
 
                         // On error, act as if there are no characteristics.
                         characteristics = new List<GattCharacteristic>();
+                        BLE_connect = false;
                     }
                 }
                 else
                 {
                     // Not granted access
                     NotifyUser("Error accessing service.", NotifyType.ErrorMessage);
-
+                    BLE_connect = false;
                     // On error, act as if there are no characteristics.
                     characteristics = new List<GattCharacteristic>();
 
@@ -673,6 +712,7 @@ namespace 多功能嬰兒助理
             {
                 NotifyUser("Restricted service. Can't read characteristics: " + ex.Message,
                 NotifyType.ErrorMessage);
+                BLE_connect = false;
                 // On error, act as if there are no characteristics.
                 characteristics = new List<GattCharacteristic>();
             }
@@ -726,6 +766,7 @@ namespace 多功能嬰兒助理
             if (selectedCharacteristic == null)
             {
                 NotifyUser("No characteristic selected", NotifyType.ErrorMessage);
+                BLE_connect = false;
                 return;
             }
 
@@ -735,6 +776,7 @@ namespace 多功能嬰兒助理
             if (result.Status != GattCommunicationStatus.Success)
             {
                 NotifyUser("Descriptor read failure: " + result.Status.ToString(), NotifyType.ErrorMessage);
+                BLE_connect = false;
             }
 
             // BT_Code: There's no need to access presentation format unless there's at least one. 
@@ -836,12 +878,14 @@ namespace 多功能嬰兒助理
                 else
                 {
                     NotifyUser($"Error registering for value changes: {status}", NotifyType.ErrorMessage);
+                    BLE_connect = false;
                 }
             }
             catch (UnauthorizedAccessException ex)
             {
                 // This usually happens when a device reports that it support indicate, but it actually doesn't.
                 NotifyUser(ex.Message, NotifyType.ErrorMessage);
+                BLE_connect = false;
             }
 
 
@@ -860,6 +904,18 @@ namespace 多功能嬰兒助理
                 if (T1 % 1 == 0) T1_Text.Text = T1 + ".0\n °C";
                 else T1_Text.Text = T1 + "\n °C";
                 T1_RadialGauge.Value = T1 * 10;
+                if (T1 < 30)
+                {
+                    T1_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
+                    T1_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
+                }
+                else
+                {
+                    T1_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.Red);
+                    T1_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
+                }
+
+
             });
         }
         private async void Characteristic_ValueChanged1(GattCharacteristic sender, GattValueChangedEventArgs args)
@@ -874,6 +930,18 @@ namespace 多功能嬰兒助理
                 if (T2 % 1 == 0) T2_Text.Text = T2 + ".0\n °C";
                 else T2_Text.Text = T2 + "\n °C";
                 T2_RadialGauge.Value = T2 * 10;
+                
+                if (T2 < 30)
+                {
+                    T2_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
+                    T2_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
+                }
+                else
+                {
+                    T2_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.Red);
+                    T2_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
+                }
+                
             });
         }
         private async void Characteristic_ValueChanged2(GattCharacteristic sender, GattValueChangedEventArgs args)
@@ -888,6 +956,16 @@ namespace 多功能嬰兒助理
                 if (T3 % 1 == 0) T3_Text.Text = T3 + ".0\n °C";
                 else T3_Text.Text = T3 + "\n °C";
                 T3_RadialGauge.Value = T3 * 10;
+                if (T3 < 30)
+                {
+                    T3_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
+                    T3_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
+                }
+                else
+                {
+                    T3_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.Red);
+                    T3_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
+                }
             });
         }
 

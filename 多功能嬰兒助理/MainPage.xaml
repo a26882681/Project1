@@ -72,46 +72,45 @@
                                     Visibility="Collapsed" Margin="0,10,10,0"/>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal">
-                            <StackPanel>
-                                <TextBlock x:Name="Read_Watch" Margin="0,10,0,0" Text="" Visibility="Collapsed"/>
-                                <!-- more page content -->
-                            </StackPanel>
+                            
                             <Grid Height="250" Width="250">
                                 <TextBlock x:Name="HR_Text" Text="" FontSize="36" HorizontalAlignment="Center" VerticalAlignment="Center" 
                                            FontFamily="Arial" FontWeight="Normal" Height="96" TextAlignment="Center" Margin="85,87,88,67" Width="77"/>
                                 <Custom:RadialGauge x:Name="HR_RadialGauge" ValueStringFormat="心率" Value="50" Minimum="50" Maximum="160" 
-                                                    StepSize="1" IsInteractive="True" TrailBrush="LightGreen" TickSpacing="2000" ScaleWidth="20" 
+                                                    StepSize="1" TrailBrush="LightGreen" TickSpacing="2000" ScaleWidth="20" 
                                                     MinAngle="220" MaxAngle="140" Unit="" ScaleTickBrush="LightGreen" UnitBrush="Black" 
                                                     ValueBrush="Black" NeedleWidth="0" TickLength="9" />
                             </Grid>
                             <Grid Height="240" Width="240">
-                                <TextBlock x:Name="T1_Text" Text="" FontSize="36" HorizontalAlignment="Center" VerticalAlignment="Center" 
+                                <TextBlock x:Name="T1_Text" Text="" FontSize="36" HorizontalAlignment="Center" VerticalAlignment="Center"  TextAlignment="Center"
                                            FontFamily="Arial" FontWeight="Normal" Height="76" Grid.ColumnSpan="2"/>
                                 <Custom:RadialGauge x:Name="T1_RadialGauge" ValueStringFormat="腋溫" Value="200" Minimum="200" Maximum="420" 
-                                                    StepSize="1" IsInteractive="True" TrailBrush="LightGreen" TickSpacing="2000" ScaleWidth="20" 
+                                                    StepSize="1" TrailBrush="LightGreen" TickSpacing="2000" ScaleWidth="20" 
                                                     MinAngle="220" MaxAngle="140" Unit="" ScaleTickBrush="LightGreen" UnitBrush="Black" 
                                                     ValueBrush="Black" NeedleWidth="0" TickLength="9" />
                             </Grid>
                             <Grid Height="240" Width="240">
-                                <TextBlock x:Name="T2_Text" Text="" FontSize="36" HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Arial" FontWeight="Normal" Height="76"/>
+                                <TextBlock x:Name="T2_Text" Text="" FontSize="36" HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Arial" 
+                                           FontWeight="Normal" Height="76" TextAlignment="Center"/>
                                 <Custom:RadialGauge x:Name="T2_RadialGauge" ValueStringFormat="臉" Value="200" Minimum="200" Maximum="420" 
-                                                    StepSize="1" IsInteractive="True" TrailBrush="LightGreen" TickSpacing="2000" ScaleWidth="20" 
+                                                    StepSize="1" TrailBrush="LightGreen" TickSpacing="2000" ScaleWidth="20" 
                                                     MinAngle="220" MaxAngle="140" Unit="" ScaleTickBrush="LightGreen" UnitBrush="Black" 
                                                     ValueBrush="Black" NeedleWidth="0" TickLength="9" />
                             </Grid>
                             <Grid Height="240" Width="240">
-                                <TextBlock x:Name="T3_Text" Text="" FontSize="36" HorizontalAlignment="Center" VerticalAlignment="Center" 
+                                <TextBlock x:Name="T3_Text" Text="" FontSize="36" HorizontalAlignment="Center" VerticalAlignment="Center"  TextAlignment="Center"
                                            FontFamily="Arial" FontWeight="Normal" Height="76"/>
                                 <Custom:RadialGauge x:Name="T3_RadialGauge" ValueStringFormat="室溫" Value="200" Minimum="200" Maximum="420" 
-                                                    StepSize="1" IsInteractive="True" TrailBrush="LightGreen" TickSpacing="2000" ScaleWidth="20" 
+                                                    StepSize="1" TrailBrush="LightGreen" TickSpacing="2000" ScaleWidth="20" 
                                                     MinAngle="220" MaxAngle="140" Unit="" ScaleTickBrush="LightGreen" UnitBrush="Black" 
                                                     ValueBrush="Black" NeedleWidth="0" TickLength="9" />
                             </Grid>
                         </StackPanel>
+                        <TextBlock x:Name="Read_Watch" Margin="0,10,0,0" Text="" Visibility="Collapsed"/>
                         <TextBox x:Name="WriteInputValue" Text="0"  Height="30"  MinWidth="238" MaxWidth="238" TextWrapping="Wrap" Margin="10,30,0,0"
-                                 VerticalAlignment="Bottom" HorizontalAlignment="Left" Visibility="Collapsed"
+                                 VerticalAlignment="Bottom" HorizontalAlignment="Left" FontFamily="Segoe UI" 
                                  />
-                        <StackPanel Orientation="Horizontal" Visibility="Collapsed">
+                        <StackPanel Orientation="Horizontal" Visibility="Visible">
                             <TextBlock Text="X-Axis：" VerticalAlignment="Center"  HorizontalAlignment="Left" FontWeight="Bold" FontSize="25"
                                        Foreground="Gray" Margin="80,0,0,0" />
                             <TextBlock x:Name="X" Text="0000" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold"
@@ -125,7 +124,7 @@
                             <TextBlock x:Name="Z" Text="0000" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold"
                                        FontSize="25" Foreground="Gray" Margin="10,0,0,0" />
                         </StackPanel>
-                        <Button x:Name="Send" Content="Send" Click="{x:Bind Path=SendButton_Click}" Margin="0,10,0,0" Visibility="Collapsed"/>
+                        <Button x:Name="Send" Content="Send" Click="{x:Bind Path=SendButton_Click}" Margin="0,10,0,0" />
                         <TextBlock x:Name="txtPortData" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,0" Visibility="Collapsed">
                             <Run Text="No data yet"/></TextBlock>
                         <TextBlock x:Name="txtStatus" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,0" Visibility="Collapsed">
