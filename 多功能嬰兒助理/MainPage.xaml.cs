@@ -56,8 +56,7 @@ namespace 多功能嬰兒助理
         private SerialDevice Arduino_serialDevice = null;
         private SerialDevice Watch_serialDevice = null;
         string[] instruction = { "connect F8-CE-C5-80-79-49;", "disconnect;", "cmd.pair", "menu.g", "icon.g", "menu.hr", "icon.hr" };
-        string[] T1=new string[5], T2 = new string[5], T3 = new string[5];
-        int T1_count = 0, T2_count = 0, T3_count = 0;
+        string T1, T2 , T3 ;
         int[] X_Axis = new int[2], Y_Axis = new int[2], Z_Axis = new int[2];
         int Not_moving_count = 0, Moving_count = 0;
         Boolean G_count = false, BLE_connect = false;
@@ -162,6 +161,7 @@ namespace 多功能嬰兒助理
         {
             if (int.Parse(WriteInputValue.Text) < 2) await SendToPort(instruction[int.Parse(WriteInputValue.Text)]);
             else await SendToPort("pkt " + instruction[int.Parse(WriteInputValue.Text)] + ",;");
+            
             /*
             DateTime myDate = DateTime.Now;
             string myDateString = myDate.ToString("yyyy-MM-dd HH:mm:ss");
@@ -172,14 +172,36 @@ namespace 多功能嬰兒助理
             db.Insert(myDateString, varString);
             */
         }
-        private async void PromoteSleepButton_Click()
-        {
-           await SendToArduino("1");
-        }
 
-        private async void Page_Loaded(object sender, RoutedEventArgs e)
+        private void Page_Loaded(object sender, RoutedEventArgs e)
         {
-            ConnectPort("COM7");
+            ConnectPort("COM6");
+            ConnectDongle("COM7");
+        }
+        private async void ConnectDongle(string com)
+        {
+            string qFilter = SerialDevice.GetDeviceSelector(com);
+
+            DeviceInformationCollection devices = await DeviceInformation.FindAllAsync(qFilter);
+            try
+            {
+                if (devices.Any())
+                {
+                    string deviceId = devices.First().Id;
+                    await OpenPort(deviceId);
+                }
+            }
+            catch (Exception ex) { };
+        
+            
+                ReadCancellationTokenSource = new CancellationTokenSource();
+                while (Watch_serialDevice != null)
+                {
+                    await Listen();
+                }
+            
+            
+
         }
         private async void ConnectPort(string com)
         {
@@ -195,12 +217,8 @@ namespace 多功能嬰兒助理
                 }
             }
             catch (Exception ex) { };
-           
-            ReadCancellationTokenSource = new CancellationTokenSource();
-            while (Watch_serialDevice != null)
-            {
-                await Listen();
-            }
+            
+
 
         }
         private async Task OpenPort(string deviceId)
@@ -516,11 +534,19 @@ namespace 多功能嬰兒助理
             return true;
         }
 
-        private void ConnectButton_Click1()
+        private async void ConnectButton_Click1()
         {
             TimeSpan period = TimeSpan.FromSeconds(1);
             ConnectButton.IsEnabled = false;
             int i=0;
+            if(WatchState.Text== "手錶：未連線")
+            {
+                await SendToPort(instruction[0]);
+            }
+            if(ArduinoState.Text== "Arduino藍芽：未連線")
+            {
+                ConnectPort("COM6");
+            }
             PeriodicTimer = ThreadPoolTimer.CreatePeriodicTimer(async (source) =>
             {
                 await Dispatcher.RunAsync(CoreDispatcherPriority.High,
@@ -760,6 +786,24 @@ namespace 多功能嬰兒助理
             element.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
         }
 
+        private async void PromoteSleep_Click(object sender, RoutedEventArgs e)
+        {
+            if (PromoteSleep_State.Text == "促眠功能：未啟動")
+            {
+                PromoteSleep_State.Text = "促眠功能：已啟動";
+                PromoteSleep.Content = "停止促眠";
+                PromoteSleep_LED.Fill = new SolidColorBrush(Colors.LightGreen);
+                await SendToArduino("3");
+            }
+            else
+            {
+                PromoteSleep_State.Text = "促眠功能：未啟動";
+                PromoteSleep_LED.Fill = new SolidColorBrush(Colors.DarkRed);
+                PromoteSleep.Content = "啟動促眠";
+                await SendToArduino("1");
+            }
+        }
+
         private void EnableCharacteristicPanels(GattCharacteristicProperties properties)
         {
             // BT_Code: Hide the controls which do not apply to this characteristic.
@@ -851,14 +895,14 @@ namespace 多功能嬰兒助理
             // Display the new value with a timestamp.
             var newValue = FormatValueByPresentation(args.CharacteristicValue, presentationFormat);
             var message = $"Value at {DateTime.Now:hh:mm:ss.FFF}: Temperature: {newValue} °C";
-            T1[T1_count] = newValue;
+            T1 = newValue;
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal,
             () =>
             {
-                if (double.Parse(T1[T1_count]) % 1 == 0) T1_Text.Text = T1 + ".0\n°C";
+                if (double.Parse(T1) % 1 == 0) T1_Text.Text = T1 + ".0\n°C";
                 else T1_Text.Text = T1 + "\n°C";
-                T1_RadialGauge.Value = double.Parse(T1[T1_count]) * 10 ;
-                if (double.Parse(T1[T1_count]) < 30)
+                T1_RadialGauge.Value = double.Parse(T1) * 10 ;
+                if (double.Parse(T1) < 30)
                 {
                     T1_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
                     T1_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
@@ -869,22 +913,21 @@ namespace 多功能嬰兒助理
                     T1_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
                 }
             });
-            T1_count++;
-            updata_Temperature();
+            
         }
         private async void Characteristic_ValueChanged1(GattCharacteristic sender, GattValueChangedEventArgs args)
         {
             // BT_Code: An Indicate or Notify reported that the value has changed.
             // Display the new value with a timestamp.
             var newValue = FormatValueByPresentation(args.CharacteristicValue, presentationFormat);
-            T2[T2_count] = newValue;
+            T2 = newValue;
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal,
             () =>
             {
-                if (double.Parse(T2[T2_count]) % 1 == 0) T2_Text.Text = T2 + ".0\n°C";
+                if (double.Parse(T2) % 1 == 0) T2_Text.Text = T2 + ".0\n°C";
                 else T2_Text.Text = T2 + "\n°C";
-                T2_RadialGauge.Value = double.Parse(T2[T2_count]) * 10;
-                if (double.Parse(T2[T2_count]) < 30)
+                T2_RadialGauge.Value = double.Parse(T2) * 10;
+                if (double.Parse(T2) < 30)
                 {
                     T2_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
                     T2_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
@@ -895,22 +938,21 @@ namespace 多功能嬰兒助理
                     T2_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
                 }
             });
-            T2_count++;
-            updata_Temperature();
+            
         }
         private async void Characteristic_ValueChanged2(GattCharacteristic sender, GattValueChangedEventArgs args)
         {
             // BT_Code: An Indicate or Notify reported that the value has changed.
             // Display the new value with a timestamp.
             var newValue = FormatValueByPresentation(args.CharacteristicValue, presentationFormat);
-            T3[T3_count] = newValue;
+            T3 = newValue;
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal,
             () =>
             {
-                if (double.Parse(T3[T3_count]) % 1 == 0) T3_Text.Text = T3 + ".0\n°C";
+                if (double.Parse(T3) % 1 == 0) T3_Text.Text = T3 + ".0\n°C";
                 else T3_Text.Text = T3 + "\n°C";
-                T3_RadialGauge.Value = double.Parse(T3[T3_count]) * 10;
-                if (double.Parse(T3[T3_count]) < 30)
+                T3_RadialGauge.Value = double.Parse(T3) * 10;
+                if (double.Parse(T3) < 30)
                 {
                     T3_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
                     T3_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
@@ -920,22 +962,11 @@ namespace 多功能嬰兒助理
                     T3_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.Red);
                     T3_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
                 }
-            });
-            T3_count++;
-            updata_Temperature();
-        }
-
-        private void updata_Temperature()
-        {
-            if(T1_count>0 && T2_count>0 && T3_count > 0)
-            {
-                T1_count--;
-                T2_count--;
-                T3_count--;
                 DateTime myDate = DateTime.Now;
                 string myDateString = myDate.ToString("yyyy-MM-dd HH:mm:ss");
-                db_T.Insert(myDateString, T1[T1_count],T2[T2_count],T3[T3_count]);
-            }
+                db_T.Insert(myDateString, T1, T2, T3);
+            });
+            
         }
 
         private string FormatValueByPresentation(IBuffer buffer, GattPresentationFormat format)
