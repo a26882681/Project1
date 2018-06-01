@@ -56,13 +56,15 @@ namespace 多功能嬰兒助理
         private SerialDevice Arduino_serialDevice = null;
         private SerialDevice Watch_serialDevice = null;
         string[] instruction = { "connect F8-CE-C5-80-79-49;", "disconnect;", "cmd.pair", "menu.g", "icon.g", "menu.hr", "icon.hr" };
-        double T1 = 0, T2 = 0, T3 = 0;
+        string[] T1=new string[5], T2 = new string[5], T3 = new string[5];
+        int T1_count = 0, T2_count = 0, T3_count = 0;
         int[] X_Axis = new int[2], Y_Axis = new int[2], Z_Axis = new int[2];
         int Not_moving_count = 0, Moving_count = 0;
         Boolean G_count = false, BLE_connect = false;
         DataWriter dataWriteObject = null;
         DataReader dataReaderObject = null;
-        DBConnect db = new DBConnect();
+        DBConnectHeartRate db_HR = new DBConnectHeartRate();
+        DBConnectTemp db_T = new DBConnectTemp();
         ThreadPoolTimer PeriodicTimer;
         string Nowtime;
         #region Error Codes
@@ -170,11 +172,18 @@ namespace 多功能嬰兒助理
             db.Insert(myDateString, varString);
             */
         }
-
+        private async void PromoteSleepButton_Click()
+        {
+           await SendToArduino("1");
+        }
 
         private async void Page_Loaded(object sender, RoutedEventArgs e)
         {
-            string qFilter = SerialDevice.GetDeviceSelector("COM3");
+            ConnectPort("COM7");
+        }
+        private async void ConnectPort(string com)
+        {
+            string qFilter = SerialDevice.GetDeviceSelector(com);
 
             DeviceInformationCollection devices = await DeviceInformation.FindAllAsync(qFilter);
             try
@@ -185,40 +194,15 @@ namespace 多功能嬰兒助理
                     await OpenPort(deviceId);
                 }
             }
-            catch (Exception ex) { }
-            qFilter = SerialDevice.GetDeviceSelector("COM6");
-            devices = await DeviceInformation.FindAllAsync(qFilter);
-            try
-            {
-                if (devices.Any())
-                {
-                    string deviceId = devices.First().Id;
-                    await OpenPort(deviceId);
-                }
-            }
-            catch (Exception ex) { }
+            catch (Exception ex) { };
+           
             ReadCancellationTokenSource = new CancellationTokenSource();
-            HR_RadialGauge.Value = 90;
-            HR_Text.Text = "90\nbpm";
-            T1=35.5;
-            T2 = 30.5;
-            T3 = 40.5;
-            if (T1 % 1 == 0) T1_Text.Text = T1 + ".0\n°C";
-            else T1_Text.Text = T1 + "\n °C";
-            T1_RadialGauge.Value = T1 * 10;
-            if (T2 % 1 == 0) T2_Text.Text = T2 + ".0\n°C";
-            else T2_Text.Text = T2 + "\n °C";
-            T2_RadialGauge.Value = T2 * 10;
-            if (T3 % 1 == 0) T3_Text.Text = T3 + ".0\n°C";
-            else T3_Text.Text = T3 + "\n °C";
-            T3_RadialGauge.Value = T3 * 10;
             while (Watch_serialDevice != null)
             {
                 await Listen();
             }
 
         }
-
         private async Task OpenPort(string deviceId)
         {
             if (deviceId.Contains("VID_1366"))
@@ -313,8 +297,23 @@ namespace 多功能嬰兒助理
                         if (strLineData.Contains("HR=") && strLineData.Contains(",") && (Regex.Replace(strLineData, @"[^\d]", String.Empty) != "0"))
                         {
                             HR_RadialGauge.Value = int.Parse(Regex.Replace(strLineData, @"[^\d]", String.Empty));
-                            HR_Text.Text = Regex.Replace(strLineData, @"[^\d]", String.Empty);
+                            DateTime myDate = DateTime.Now;
+                            string myDateString = myDate.ToString("yyyy-MM-dd HH:mm:ss");
+                            string varString = Regex.Replace(strLineData, @"[^\d]", String.Empty);
+                            db_HR.Insert(myDateString, varString);
+
+                            HR_Text.Text = HR_RadialGauge.Value + "\nbpm";
                             Read_Watch.Text = lines[lines.Length - 1];
+                            if (HR_RadialGauge.Value < 120)
+                            {
+                                HR_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
+                                HR_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
+                            }
+                            else
+                            {
+                                HR_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.Red);
+                                HR_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
+                            }
                         }
                         else if (strLineData.Contains("G=") && strLineData.Contains(","))
                         {
@@ -517,50 +516,42 @@ namespace 多功能嬰兒助理
             return true;
         }
 
-        private async void ConnectButton_Click1()
+        private void ConnectButton_Click1()
         {
             TimeSpan period = TimeSpan.FromSeconds(1);
-
+            ConnectButton.IsEnabled = false;
+            int i=0;
             PeriodicTimer = ThreadPoolTimer.CreatePeriodicTimer(async (source) =>
             {
                 await Dispatcher.RunAsync(CoreDispatcherPriority.High,
                 () =>
                 {
-                    if (!BLE_connect && Temperature1_State.Text.Contains("未連線"))
+                    if (!BLE_connect && Temperature1_State.Text.Contains("未連線") && i<1)
                     {
                         ConnectButton_Click(bluetoothLeDevice, SelectedBleDeviceId, 0);
+                        i = 1;
                     }
-                    else if (!BLE_connect && Temperature2_State.Text.Contains("未連線"))
+                    else if (!BLE_connect && Temperature2_State.Text.Contains("未連線") && i<2)
                     {
                         ConnectButton_Click(bluetoothLeDevice1, SelectedBleDeviceId1, 1);
+                        i = 2;
                     }
-                    else if (!BLE_connect && Temperature3_State.Text.Contains("未連線"))
+                    else if (!BLE_connect && Temperature3_State.Text.Contains("未連線") && i<3)
                     {
                         ConnectButton_Click(bluetoothLeDevice2, SelectedBleDeviceId2, 2);
+                        i = 3;
                     }
                     else if (!BLE_connect)
                     {
                         close_timer();
+                        i = 0;
+                        ConnectButton.IsEnabled = true;
                     }
-
+                    
                 });
 
             }, period);
-            await SendToArduino("1");
-            HR_RadialGauge.Value = 90;
-            HR_Text.Text = "120\nbpm";
-            T1 = 25.5;
-            T2 = 20.5;
-            T3 = 23.5;
-            if (T1 % 1 == 0) T1_Text.Text = T1 + ".0\n°C";
-            else T1_Text.Text = T1 + "\n °C";
-            T1_RadialGauge.Value = T1 * 10;
-            if (T2 % 1 == 0) T2_Text.Text = T2 + ".0\n°C";
-            else T2_Text.Text = T2 + "\n °C";
-            T2_RadialGauge.Value = T2 * 10;
-            if (T3 % 1 == 0) T3_Text.Text = T3 + ".0\n°C";
-            else T3_Text.Text = T3 + "\n °C";
-            T3_RadialGauge.Value = T3 * 10;
+            
         }
         private void close_timer()
         {
@@ -623,6 +614,7 @@ namespace 多功能嬰兒助理
                         Temperature3_State.Text = "體溫計(室溫)：未連線";
                         Temperature3_State_LED.Fill = new SolidColorBrush(Colors.DarkRed);
                     }
+                    BLE_connect = false;
                 }
             }
         }
@@ -657,13 +649,14 @@ namespace 多功能嬰兒助理
 
                         // On error, act as if there are no characteristics.
                         characteristics = new List<GattCharacteristic>();
+                        BLE_connect = false;
                     }
                 }
                 else
                 {
                     // Not granted access
                     NotifyUser("Error accessing service.", NotifyType.ErrorMessage);
-
+                    BLE_connect = false;
                     // On error, act as if there are no characteristics.
                     characteristics = new List<GattCharacteristic>();
 
@@ -673,6 +666,7 @@ namespace 多功能嬰兒助理
             {
                 NotifyUser("Restricted service. Can't read characteristics: " + ex.Message,
                 NotifyType.ErrorMessage);
+                BLE_connect = false;
                 // On error, act as if there are no characteristics.
                 characteristics = new List<GattCharacteristic>();
             }
@@ -726,6 +720,7 @@ namespace 多功能嬰兒助理
             if (selectedCharacteristic == null)
             {
                 NotifyUser("No characteristic selected", NotifyType.ErrorMessage);
+                BLE_connect = false;
                 return;
             }
 
@@ -735,6 +730,7 @@ namespace 多功能嬰兒助理
             if (result.Status != GattCommunicationStatus.Success)
             {
                 NotifyUser("Descriptor read failure: " + result.Status.ToString(), NotifyType.ErrorMessage);
+                BLE_connect = false;
             }
 
             // BT_Code: There's no need to access presentation format unless there's at least one. 
@@ -836,12 +832,14 @@ namespace 多功能嬰兒助理
                 else
                 {
                     NotifyUser($"Error registering for value changes: {status}", NotifyType.ErrorMessage);
+                    BLE_connect = false;
                 }
             }
             catch (UnauthorizedAccessException ex)
             {
                 // This usually happens when a device reports that it support indicate, but it actually doesn't.
                 NotifyUser(ex.Message, NotifyType.ErrorMessage);
+                BLE_connect = false;
             }
 
 
@@ -853,42 +851,91 @@ namespace 多功能嬰兒助理
             // Display the new value with a timestamp.
             var newValue = FormatValueByPresentation(args.CharacteristicValue, presentationFormat);
             var message = $"Value at {DateTime.Now:hh:mm:ss.FFF}: Temperature: {newValue} °C";
-            T1 = double.Parse(newValue);
+            T1[T1_count] = newValue;
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal,
             () =>
             {
-                if (T1 % 1 == 0) T1_Text.Text = T1 + ".0\n °C";
-                else T1_Text.Text = T1 + "\n °C";
-                T1_RadialGauge.Value = T1 * 10;
+                if (double.Parse(T1[T1_count]) % 1 == 0) T1_Text.Text = T1 + ".0\n°C";
+                else T1_Text.Text = T1 + "\n°C";
+                T1_RadialGauge.Value = double.Parse(T1[T1_count]) * 10 ;
+                if (double.Parse(T1[T1_count]) < 30)
+                {
+                    T1_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
+                    T1_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
+                }
+                else
+                {
+                    T1_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.Red);
+                    T1_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
+                }
             });
+            T1_count++;
+            updata_Temperature();
         }
         private async void Characteristic_ValueChanged1(GattCharacteristic sender, GattValueChangedEventArgs args)
         {
             // BT_Code: An Indicate or Notify reported that the value has changed.
             // Display the new value with a timestamp.
             var newValue = FormatValueByPresentation(args.CharacteristicValue, presentationFormat);
-            T2 = double.Parse(newValue);
+            T2[T2_count] = newValue;
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal,
             () =>
             {
-                if (T2 % 1 == 0) T2_Text.Text = T2 + ".0\n °C";
-                else T2_Text.Text = T2 + "\n °C";
-                T2_RadialGauge.Value = T2 * 10;
+                if (double.Parse(T2[T2_count]) % 1 == 0) T2_Text.Text = T2 + ".0\n°C";
+                else T2_Text.Text = T2 + "\n°C";
+                T2_RadialGauge.Value = double.Parse(T2[T2_count]) * 10;
+                if (double.Parse(T2[T2_count]) < 30)
+                {
+                    T2_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
+                    T2_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
+                }
+                else
+                {
+                    T2_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.Red);
+                    T2_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
+                }
             });
+            T2_count++;
+            updata_Temperature();
         }
         private async void Characteristic_ValueChanged2(GattCharacteristic sender, GattValueChangedEventArgs args)
         {
             // BT_Code: An Indicate or Notify reported that the value has changed.
             // Display the new value with a timestamp.
             var newValue = FormatValueByPresentation(args.CharacteristicValue, presentationFormat);
-            T3 = double.Parse(newValue);
+            T3[T3_count] = newValue;
             await Dispatcher.RunAsync(CoreDispatcherPriority.Normal,
             () =>
             {
-                if (T3 % 1 == 0) T3_Text.Text = T3 + ".0\n °C";
-                else T3_Text.Text = T3 + "\n °C";
-                T3_RadialGauge.Value = T3 * 10;
+                if (double.Parse(T3[T3_count]) % 1 == 0) T3_Text.Text = T3 + ".0\n°C";
+                else T3_Text.Text = T3 + "\n°C";
+                T3_RadialGauge.Value = double.Parse(T3[T3_count]) * 10;
+                if (double.Parse(T3[T3_count]) < 30)
+                {
+                    T3_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
+                    T3_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
+                }
+                else
+                {
+                    T3_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.Red);
+                    T3_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
+                }
             });
+            T3_count++;
+            updata_Temperature();
+        }
+
+        private void updata_Temperature()
+        {
+            if(T1_count>0 && T2_count>0 && T3_count > 0)
+            {
+                T1_count--;
+                T2_count--;
+                T3_count--;
+                DateTime myDate = DateTime.Now;
+                string myDateString = myDate.ToString("yyyy-MM-dd HH:mm:ss");
+                db_T.Insert(myDateString, T1[T1_count],T2[T2_count],T3[T3_count]);
+            }
         }
 
         private string FormatValueByPresentation(IBuffer buffer, GattPresentationFormat format)
@@ -1002,7 +1049,7 @@ namespace 多功能嬰兒助理
             return mantissa * Math.Pow(10.0, 1);
         }
         #endregion
-        class DBConnect
+        class DBConnectHeartRate
         {
 
             private MySqlConnection connection;
@@ -1012,7 +1059,7 @@ namespace 多功能嬰兒助理
             private string password;
 
             //Constructor
-            public DBConnect()
+            public DBConnectHeartRate()
             {
                 Initialize();
             }
@@ -1027,8 +1074,10 @@ namespace 多功能嬰兒助理
                 string connectionString;
                 connectionString = "SERVER=" + server + ";" + "DATABASE=" +
                 database + ";" + "UID=" + uid + ";" + "PASSWORD=" + password + ";" + "SslMode=None;" + "charset=utf8";
+
                 connection = new MySqlConnection(connectionString);
             }
+
             //open connection to database
             public bool OpenConnection()
             {
@@ -1047,8 +1096,9 @@ namespace 多功能嬰兒助理
                     switch (ex.Number)
                     {
                         case 0:
-                            //MessageBox.Show("Cannot connect to server.Contact administrator");
+                            //MessageBox.Show("Cannot connect to server.  Contact administrator");
                             break;
+
                         case 1045:
                             //MessageBox.Show("Invalid username/password, please try again");
                             break;
@@ -1118,14 +1168,213 @@ namespace 多功能嬰兒助理
             //Delete statement
             /*public void Delete()
             {
-            string query = "DELETE FROM tableinfo WHERE name='" + + "'";
+                string query = "DELETE FROM tableinfo WHERE name='" + + "'";
 
-            if (this.OpenConnection() == true)
+                if (this.OpenConnection() == true)
+                {
+                    MySqlCommand cmd = new MySqlCommand(query, connection);
+                    cmd.ExecuteNonQuery();
+                    this.CloseConnection();
+                }
+            }*/
+
+            //Select statement
+            public List<string>[] Select()
             {
-            MySqlCommand cmd = new MySqlCommand(query, connection);
-            cmd.ExecuteNonQuery();
-            this.CloseConnection();
+                string query = "SELECT * FROM tableinfo";
+
+                //Create a list to store the result
+                List<string>[] list = new List<string>[3];
+                list[0] = new List<string>();
+                list[1] = new List<string>();
+                list[2] = new List<string>();
+
+                //Open connection
+                if (this.OpenConnection() == true)
+                {
+                    //Create Command
+                    MySqlCommand cmd = new MySqlCommand(query, connection);
+                    //Create a data reader and Execute the command
+                    MySqlDataReader dataReader = cmd.ExecuteReader();
+
+                    //Read the data and store them in the list
+                    while (dataReader.Read())
+                    {
+                        list[0].Add(dataReader["id"] + "");
+                        list[1].Add(dataReader["name"] + "");
+                        list[2].Add(dataReader["age"] + "");
+                    }
+
+                    //close Data Reader
+                    dataReader.Close();
+
+                    //close Connection
+                    this.CloseConnection();
+
+                    //return list to be displayed
+                    return list;
+                }
+                else
+                {
+                    return list;
+                }
             }
+
+            //Count statement
+            public int Count()
+            {
+                string query = "SELECT Count(*) FROM tableinfo";
+                int Count = -1;
+
+                //Open Connection
+                if (this.OpenConnection() == true)
+                {
+                    //Create Mysql Command
+                    MySqlCommand cmd = new MySqlCommand(query, connection);
+
+                    //ExecuteScalar will return one value
+                    Count = int.Parse(cmd.ExecuteScalar() + "");
+
+                    //close Connection
+                    this.CloseConnection();
+
+                    return Count;
+                }
+                else
+                {
+                    return Count;
+                }
+            }
+        }
+
+
+        class DBConnectTemp
+        {
+
+            private MySqlConnection connection;
+            private string server;
+            private string database;
+            private string uid;
+            private string password;
+
+            //Constructor
+            public DBConnectTemp()
+            {
+                Initialize();
+            }
+
+            //Initialize values
+            public void Initialize()
+            {
+                server = "192.168.100.7";
+                database = "temperature";
+                uid = "104360082";
+                password = "104360082";
+                string connectionString;
+                connectionString = "SERVER=" + server + ";" + "DATABASE=" +
+                database + ";" + "UID=" + uid + ";" + "PASSWORD=" + password + ";" + "SslMode=None;" + "charset=utf8";
+
+                connection = new MySqlConnection(connectionString);
+            }
+
+            //open connection to database
+            public bool OpenConnection()
+            {
+                try
+                {
+                    connection.Open();
+                    return true;
+                }
+                catch (MySqlException ex)
+                {
+                    //When handling errors, you can your application's response based 
+                    //on the error number.
+                    //The two most common error numbers when connecting are as follows:
+                    //0: Cannot connect to server.
+                    //1045: Invalid user name and/or password.
+                    switch (ex.Number)
+                    {
+                        case 0:
+                            //MessageBox.Show("Cannot connect to server.  Contact administrator");
+                            break;
+
+                        case 1045:
+                            //MessageBox.Show("Invalid username/password, please try again");
+                            break;
+                    }
+                    return false;
+                }
+            }
+
+            //Close connection
+            public bool CloseConnection()
+            {
+                try
+                {
+                    connection.Close();
+                    return true;
+                }
+                catch (MySqlException ex)
+                {
+                    //MessageBox.Show(ex.Message);
+                    return false;
+                }
+            }
+
+            //Insert statement
+            public void Insert(string Time, string mysqlTemp, string mysqlTempEnvir, string mysqlTempFace)
+            {
+
+                string query = "INSERT INTO temperature (Time,Temp,TempEnvir,TempFace) VALUES('" + Time + "', '" + mysqlTemp + "', '" + mysqlTempEnvir + "', '" + mysqlTempFace + "')";
+
+                //open connection
+                if (this.OpenConnection() == true)
+                {
+                    //create command and assign the query and connection from the constructor
+                    MySqlCommand cmd = new MySqlCommand(query, connection);
+
+                    //Execute command
+                    cmd.ExecuteNonQuery();
+
+                    //close connection
+                    this.CloseConnection();
+                }
+            }
+
+            //Update statement
+            public void Update()
+            {
+                string query = "UPDATE tableinfo SET name='Joe', age='22' WHERE name='John Smith'";
+
+                //Open connection
+                if (this.OpenConnection() == true)
+                {
+                    //create mysql command
+                    MySqlCommand cmd = new MySqlCommand();
+                    //Assign the query using CommandText
+                    cmd.CommandText = query;
+                    //Assign the connection using Connection
+                    cmd.Connection = connection;
+
+                    //Execute query
+                    cmd.ExecuteNonQuery();
+
+                    //close connection
+                    this.CloseConnection();
+                }
+            }
+
+            //Delete statement
+            /*public void Delete()
+            {
+                string query = "DELETE FROM tableinfo WHERE name='" + + "'";
+
+                if (this.OpenConnection() == true)
+                {
+                    MySqlCommand cmd = new MySqlCommand(query, connection);
+                    cmd.ExecuteNonQuery();
+                    this.CloseConnection();
+                }
             }*/
 
             //Select statement
