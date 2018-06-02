@@ -58,13 +58,13 @@ namespace 多功能嬰兒助理
         string[] instruction = { "connect F8-CE-C5-80-79-49;", "disconnect;", "cmd.pair", "menu.g", "icon.g", "menu.hr", "icon.hr" };
         string T1, T2 , T3 ;
         int[] X_Axis = new int[2], Y_Axis = new int[2], Z_Axis = new int[2];
-        int Not_moving_count = 0, Moving_count = 0;
+        int Not_moving_count = 0, Moving_count = 0 , High_HR_count=0, Low_HR_count = 0, High_T_count = 0, Low_T_count = 0;
         Boolean G_count = false, BLE_connect = false;
         DataWriter dataWriteObject = null;
         DataReader dataReaderObject = null;
         DBConnectHeartRate db_HR = new DBConnectHeartRate();
         DBConnectTemp db_T = new DBConnectTemp();
-        ThreadPoolTimer PeriodicTimer;
+        ThreadPoolTimer PeriodicTimer,WatchTimer;
         string Nowtime;
         #region Error Codes
         readonly int E_DEVICE_NOT_AVAILABLE = unchecked((int)0x800710df); // HRESULT_FROM_WIN32(ERROR_DEVICE_NOT_AVAILABLE)
@@ -157,20 +157,10 @@ namespace 多功能嬰兒助理
         }
         #endregion
         #region watch_connect
-        private async void SendButton_Click()
+        private void SendButton_Click()
         {
-            if (int.Parse(WriteInputValue.Text) < 2) await SendToPort(instruction[int.Parse(WriteInputValue.Text)]);
-            else await SendToPort("pkt " + instruction[int.Parse(WriteInputValue.Text)] + ",;");
-            
-            /*
-            DateTime myDate = DateTime.Now;
-            string myDateString = myDate.ToString("yyyy-MM-dd HH:mm:ss");
-            Random crandom = new Random();
-            int y;
-            y = crandom.Next(70, 140);
-            string varString = Convert.ToString(y);
-            db.Insert(myDateString, varString);
-            */
+
+            HR_G_Enable(3);
         }
 
         private void Page_Loaded(object sender, RoutedEventArgs e)
@@ -270,7 +260,7 @@ namespace 多功能嬰兒助理
             }
             catch (Exception ex)
             {
-                txtStatus.Text = ex.Message;
+                
             }
             finally
             {
@@ -322,20 +312,44 @@ namespace 多功能嬰兒助理
 
                             HR_Text.Text = HR_RadialGauge.Value + "\nbpm";
                             Read_Watch.Text = lines[lines.Length - 1];
-                            if (HR_RadialGauge.Value < 120)
-                            {
-                                HR_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
-                                HR_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
-                            }
-                            else
+                            if (HR_RadialGauge.Value <= 80)
                             {
                                 HR_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.Red);
                                 HR_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
+                                
+                                Low_HR_count++;
+                                if (Low_HR_count == 20)
+                                {
+                                    //心率過低
+                                }
                             }
+                            else if(HR_RadialGauge.Value < 150)
+                            {
+                                HR_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
+                                HR_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
+                                //心率正常
+                                Low_HR_count = 0;
+                                High_HR_count = 0;
+                            }
+                            else if (HR_RadialGauge.Value >= 150)
+                            {
+                                HR_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.Red);
+                                HR_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
+                                //心率過高
+                                High_HR_count++;
+                                
+                                if (High_HR_count == 20)
+                                {
+                                    HR_G_Enable(3);
+                                }
+                            }
+
                         }
-                        else if (strLineData.Contains("G=") && strLineData.Contains(","))
+                        else if (lines[lines.Length - 2].Contains("G=") && lines[lines.Length - 2].Contains(","))
                         {
+                            
                             strLineData = Regex.Replace(strLineData, @"[^\d]", String.Empty);
+                            Read_Watch.Text = lines[lines.Length - 1];
                             X.Text = "";
                             Y.Text = "";
                             Z.Text = "";
@@ -360,24 +374,35 @@ namespace 多功能嬰兒助理
                                 Z_Axis[0] = int.Parse(Z.Text);
                                 G_count = true;
                             }
-
-                            if (Math.Abs(X_Axis[1] - X_Axis[0]) > 50) Not_moving = false;
-                            else if (Math.Abs(Y_Axis[1] - Y_Axis[0]) > 50) Not_moving = false;
-                            else if (Math.Abs(Z_Axis[1] - Z_Axis[0]) > 50) Not_moving = false;
+                            
+                            if (Math.Abs(X_Axis[1] - X_Axis[0]) > 50 || Math.Abs(Y_Axis[1] - Y_Axis[0]) > 50 || Math.Abs(Z_Axis[1] - Z_Axis[0]) > 50) Not_moving = false;
                             else Not_moving = true;
 
                             if (Not_moving)
                             {
                                 Not_moving_count++;
                                 Moving_count = 0;
+                               
                             }
                             else
                             {
                                 Moving_count++;
                                 Not_moving_count = 0;
+                                
                             }
-                            if (Moving_count > 10) txtPortData.Text = "移動";
-                            else if (Not_moving_count > 10) txtPortData.Text = "未移動";
+                            if (Moving_count > 20)
+                            {
+                                txtPortData.Text = "嬰兒狀態：哭鬧中"+ Moving_count;
+                                HR_G_Enable(0);
+                                Moving_count = 0;
+                            }
+                            else if (Not_moving_count > 20)
+                            {
+                                txtPortData.Text = "嬰兒狀態：心率過高" + Not_moving_count;
+                                HR_G_Enable(0);
+                                Not_moving_count = 0;
+                            }
+                            
                         }
                         else if (Read_Watch.Text.Contains("disconnect"))
                         {
@@ -385,13 +410,16 @@ namespace 多功能嬰兒助理
                             WatchState_LED.Fill = new SolidColorBrush(Colors.DarkRed);
                             Read_Watch.Text = lines[lines.Length - 1];
                         }
-                        else if (Read_Watch.Text.Contains("TX characteristic") || (Read_Watch.Text.Contains("BAT=") && Read_Watch.Text.Contains(",")))
+                        else if ((Read_Watch.Text.Contains("TX characteristic") || (Read_Watch.Text.Contains("BAT=") && Read_Watch.Text.Contains(","))) && WatchState.Text == "手錶：未連線")
                         {
                             WatchState.Text = "手錶：已連線";
                             Nowtime = Regex.Replace(DateTime.Now.ToString("yyyy-MM-dd HH:mm"), @"[^\d]", String.Empty);
                             WatchState_LED.Fill = new SolidColorBrush(Colors.LightGreen);
                             await SendToPort("pkt T=" + Nowtime + ",;");
                             Read_Watch.Text = lines[lines.Length - 1];
+                            HR_G_Enable(0);
+
+
                         }
                         strLineData = sr.ReadLine();
                     }
@@ -577,8 +605,52 @@ namespace 多功能嬰兒助理
                 });
 
             }, period);
-            
         }
+        private void HR_G_Enable(int i)
+        {
+            TimeSpan period = TimeSpan.FromSeconds(1);
+            
+            WatchTimer = ThreadPoolTimer.CreatePeriodicTimer(async (source) =>
+            {
+                await Dispatcher.RunAsync(CoreDispatcherPriority.High,
+                async () =>
+                {
+                   
+                    if (i == 0)
+                    {
+                        await SendToPort("pkt " + instruction[5] + ",;");
+                        
+                    }
+                    else if (i == 1)
+                    {
+                        await SendToPort("pkt " + instruction[6] + ",;");
+                    }
+                    else if (i == 2)
+                    {
+                        close_WatchTimer();
+                    }
+                    else if (i == 3)
+                    {
+                        await SendToPort("pkt " + instruction[3] + ",;");
+                    }
+                    else if (i == 4)
+                    {
+                        await SendToPort("pkt " + instruction[4] + ",;");
+                    }
+                    else 
+                    {
+                        close_WatchTimer();
+                    }
+                    i++;
+                });
+                
+            }, period);
+        }
+        private void close_WatchTimer()
+        {
+            WatchTimer.Cancel();
+        }
+
         private void close_timer()
         {
             PeriodicTimer.Cancel();
@@ -902,8 +974,20 @@ namespace 多功能嬰兒助理
                 if (double.Parse(T1) % 1 == 0) T1_Text.Text = T1 + ".0\n°C";
                 else T1_Text.Text = T1 + "\n°C";
                 T1_RadialGauge.Value = double.Parse(T1) * 10 ;
-                if (double.Parse(T1) < 30)
+                if (double.Parse(T1) < 35)
                 {
+                    T1_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.Red);
+                    T1_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
+                    Low_T_count++;
+                    if (Low_T_count == 10)
+                    {
+                        txtPortData.Text = "嬰兒狀態：體溫過低";
+                    }
+                }
+                else if (double.Parse(T1) < 37.2)
+                {
+                    High_T_count = 0;
+                    Low_T_count = 0;
                     T1_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.LightGreen);
                     T1_RadialGauge.TrailBrush = new SolidColorBrush(Colors.LightGreen);
                 }
@@ -911,6 +995,11 @@ namespace 多功能嬰兒助理
                 {
                     T1_RadialGauge.ScaleTickBrush = new SolidColorBrush(Colors.Red);
                     T1_RadialGauge.TrailBrush = new SolidColorBrush(Colors.Red);
+                    High_T_count++;
+                    if (High_T_count == 10)
+                    {
+                        txtPortData.Text = "嬰兒狀態：發燒";
+                    }
                 }
             });
             

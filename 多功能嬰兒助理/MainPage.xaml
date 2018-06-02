@@ -38,7 +38,7 @@
                             <Ellipse x:Name="Temperature1_State_LED" HorizontalAlignment="Center" Height="15" Margin="5,0,0,0" VerticalAlignment="Center"
                                      Width="15" RequestedTheme="Light" Fill="DarkRed" />
                         </StackPanel>
-                        <StackPanel Orientation="Horizontal" Margin="20,0" >
+                        <StackPanel Orientation="Horizontal" Margin="20,0" Visibility="Collapsed" >
                             <TextBlock x:Name="Temperature2_State" Text="體溫計(臉)：未連線" Margin="0,5,0,5"/>
                             <Ellipse x:Name="Temperature2_State_LED" HorizontalAlignment="Center" Height="15" Margin="5,0,0,0" VerticalAlignment="Center"
                                      Width="15" RequestedTheme="Light" Fill="DarkRed" />
@@ -77,9 +77,11 @@
                             <Button x:Name="CharacteristicReadButton" Content="Read Value" Click="{x:Bind Path=CharacteristicReadButton_Click}"
                                     Visibility="Collapsed" Margin="0,10,10,0"/>
                         </StackPanel>
+                        
                         <StackPanel Orientation="Horizontal">
                             <StackPanel>
-                                <TextBlock x:Name="Read_Watch" Margin="0,10,0,0" Text="" Visibility="Collapsed"/>
+                                
+                                
                                 <!-- more page content -->
                             </StackPanel>
                             <Grid Height="250" Width="250">
@@ -98,7 +100,7 @@
                                                     MinAngle="220" MaxAngle="140" Unit="" ScaleTickBrush="LightGreen" UnitBrush="Black" 
                                                     ValueBrush="Black" NeedleWidth="0" TickLength="9" />
                             </Grid>
-                            <Grid Height="240" Width="240">
+                            <Grid Height="240" Width="240" Visibility="Collapsed">
                                 <TextBlock x:Name="T2_Text" Text="" FontSize="36" HorizontalAlignment="Center" VerticalAlignment="Center"  TextAlignment="Center" FontWeight="Normal" Height="76"/>
                                 <Custom:RadialGauge x:Name="T2_RadialGauge" ValueStringFormat="臉" Value="200" Minimum="200" Maximum="420" 
                                                     StepSize="1"  TrailBrush="LightGreen" TickSpacing="2000" ScaleWidth="20" 
@@ -114,10 +116,11 @@
                                                     ValueBrush="Black" NeedleWidth="0" TickLength="9" />
                             </Grid>
                         </StackPanel>
+                        <TextBlock x:Name="Read_Watch" Margin="0,10,0,0" Text="1414" Visibility="Collapsed"/>
                         <TextBox x:Name="WriteInputValue" Text="0"  Height="30"  MinWidth="238" MaxWidth="238" TextWrapping="Wrap" Margin="10,30,0,0"
                                  VerticalAlignment="Bottom" HorizontalAlignment="Left" Visibility="Visible"
                                  />
-                        <StackPanel Orientation="Horizontal" Visibility="Visible">
+                        <StackPanel Orientation="Horizontal" Visibility="Collapsed">
                             <TextBlock Text="X-Axis：" VerticalAlignment="Center"  HorizontalAlignment="Left" FontWeight="Bold" FontSize="25"
                                        Foreground="Gray" Margin="80,0,0,0" />
                             <TextBlock x:Name="X" Text="0000" VerticalAlignment="Center" HorizontalAlignment="Left" FontWeight="Bold"
@@ -132,7 +135,7 @@
                                        FontSize="25" Foreground="Gray" Margin="10,0,0,0" />
                         </StackPanel>
                         <Button x:Name="Send" Content="Send" Click="{x:Bind Path=SendButton_Click}" Margin="0,10,0,0" Visibility="Visible"/>
-                        <TextBlock x:Name="txtPortData" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,0" Visibility="Collapsed">
+                        <TextBlock x:Name="txtPortData" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,0" Visibility="Visible">
                             <Run Text="No data yet"/></TextBlock>
                         <TextBlock x:Name="txtStatus" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,0" Visibility="Collapsed">
                             <Run Text="No data yet"/></TextBlock>
